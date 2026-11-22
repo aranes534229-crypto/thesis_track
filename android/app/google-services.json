@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1048084442036",
+    "project_id": "thesistrackcom",
+    "storage_bucket": "thesistrackcom.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1048084442036:android:718f5cf4a2345fee0220e1",
+        "android_client_info": {
+          "package_name": "com.example.thesis_track"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1048084442036-fkcq0jqbbk7u8kibs9p2u2goirme79uk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS1UC8YujYa8szxC30qYdAA4yVlvKUtps"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1048084442036-fkcq0jqbbk7u8kibs9p2u2goirme79uk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
