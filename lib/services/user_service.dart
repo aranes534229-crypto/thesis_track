@@ -3,11 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 class UserProfile {
   const UserProfile({
+    required this.uid,
     required this.name,
     required this.email,
     required this.role,
   });
 
+  final String uid;
   final String name;
   final String email;
   final String role;
@@ -90,7 +92,7 @@ class UserService {
         return null;
       }
 
-      return UserProfile(name: name, email: email, role: role);
+      return UserProfile(uid: uid, name: name, email: email, role: role);
     });
   }
 }

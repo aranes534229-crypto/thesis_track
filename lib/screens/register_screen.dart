@@ -62,8 +62,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
         role: _role,
       );
 
+      await widget.userService.signOut();
+
+      // Let the auth listener restore the root route to Login before the
+      // Register screen is closed, so a home or missing-profile state cannot
+      // flash on screen.
+      await WidgetsBinding.instance.endOfFrame;
+
       if (mounted) {
+        final messenger = ScaffoldMessenger.of(context);
         Navigator.of(context).popUntil((route) => route.isFirst);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Account created. Please log in.')),
+          );
+        });
       }
     } catch (error) {
       if (mounted) {

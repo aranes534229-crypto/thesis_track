@@ -1,13 +1,13 @@
-import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'screens/adviser_home_screen.dart';
+import 'screens/create_join_group_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/student_home_screen.dart';
+import 'services/group_service.dart';
 import 'services/user_service.dart';
 
 Future<void> main() async {
@@ -49,11 +49,13 @@ class _AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<_AuthGate> {
   late final UserService _userService;
+  late final GroupService _groupService;
 
   @override
   void initState() {
     super.initState();
     _userService = UserService();
+    _groupService = GroupService();
   }
 
   Future<void> _logout() async {
@@ -73,6 +75,7 @@ class _AuthGateState extends State<_AuthGate> {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
+          debugPrint('Authentication state stream error: ${snapshot.error}');
           return _StatusScreen(
             message: 'Something went wrong. Please try again.',
             onLogout: () {
@@ -94,6 +97,7 @@ class _AuthGateState extends State<_AuthGate> {
           key: ValueKey(user.uid),
           uid: user.uid,
           userService: _userService,
+          groupService: _groupService,
           onLogout: () {
             _logout();
           },
@@ -108,11 +112,13 @@ class _ProfileGate extends StatefulWidget {
     super.key,
     required this.uid,
     required this.userService,
+    required this.groupService,
     required this.onLogout,
   });
 
   final String uid;
   final UserService userService;
+  final GroupService groupService;
   final VoidCallback onLogout;
 
   @override
@@ -121,38 +127,11 @@ class _ProfileGate extends StatefulWidget {
 
 class _ProfileGateState extends State<_ProfileGate> {
   late final Stream<UserProfile?> _profileStream;
-  Timer? _missingProfileTimer;
-  bool _showMissingProfile = false;
 
   @override
   void initState() {
     super.initState();
     _profileStream = widget.userService.watchProfile(widget.uid);
-  }
-
-  void _startMissingProfileTimer() {
-    if (_missingProfileTimer != null || _showMissingProfile) {
-      return;
-    }
-
-    _missingProfileTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _showMissingProfile = true;
-        });
-      }
-    });
-  }
-
-  void _cancelMissingProfileTimer() {
-    _missingProfileTimer?.cancel();
-    _missingProfileTimer = null;
-  }
-
-  @override
-  void dispose() {
-    _cancelMissingProfileTimer();
-    super.dispose();
   }
 
   @override
@@ -161,7 +140,7 @@ class _ProfileGateState extends State<_ProfileGate> {
       stream: _profileStream,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          _cancelMissingProfileTimer();
+          debugPrint('User profile stream error: ${snapshot.error}');
           return _StatusScreen(
             message: 'Something went wrong. Please try again.',
             onLogout: widget.onLogout,
@@ -174,28 +153,88 @@ class _ProfileGateState extends State<_ProfileGate> {
 
         final profile = snapshot.data;
         if (profile != null) {
-          _cancelMissingProfileTimer();
-
           if (profile.role == 'student') {
-            return StudentHomeScreen(
+            return _StudentGroupGate(
+              key: ValueKey('student-${profile.uid}'),
               profile: profile,
+              groupService: widget.groupService,
               onLogout: widget.onLogout,
             );
           }
 
-          return AdviserHomeScreen(profile: profile, onLogout: widget.onLogout);
-        }
-
-        _startMissingProfileTimer();
-
-        if (_showMissingProfile) {
-          return _StatusScreen(
-            message: 'User profile not found',
+          return AdviserHomeScreen(
+            profile: profile,
+            groupService: widget.groupService,
             onLogout: widget.onLogout,
           );
         }
 
-        return const _LoadingScreen();
+        return _StatusScreen(
+          message: 'User profile not found',
+          onLogout: widget.onLogout,
+        );
+      },
+    );
+  }
+}
+
+class _StudentGroupGate extends StatefulWidget {
+  const _StudentGroupGate({
+    super.key,
+    required this.profile,
+    required this.groupService,
+    required this.onLogout,
+  });
+
+  final UserProfile profile;
+  final GroupService groupService;
+  final VoidCallback onLogout;
+
+  @override
+  State<_StudentGroupGate> createState() => _StudentGroupGateState();
+}
+
+class _StudentGroupGateState extends State<_StudentGroupGate> {
+  late final Stream<StudyGroup?> _groupStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _groupStream = widget.groupService.watchStudentGroup(widget.profile.uid);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<StudyGroup?>(
+      stream: _groupStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          debugPrint('Student group stream error: ${snapshot.error}');
+          return _StatusScreen(
+            message: 'Something went wrong. Please try again.',
+            onLogout: widget.onLogout,
+          );
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const _LoadingScreen();
+        }
+
+        final group = snapshot.data;
+        if (group != null) {
+          return StudentHomeScreen(
+            profile: widget.profile,
+            group: group,
+            groupService: widget.groupService,
+            onLogout: widget.onLogout,
+          );
+        }
+
+        return CreateOrJoinGroupScreen(
+          profile: widget.profile,
+          groupService: widget.groupService,
+          onLogout: widget.onLogout,
+        );
       },
     );
   }
